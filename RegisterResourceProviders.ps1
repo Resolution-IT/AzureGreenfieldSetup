@@ -23,6 +23,7 @@ $requiredProviders = @(
     "Microsoft.Authorization",
     "Microsoft.Automation",
     "Microsoft.AzureTerraform",
+    "Microsoft.Billing",
     "Microsoft.Cache",
     "Microsoft.Capacity",
     "Microsoft.ChangeAnalysis",
@@ -99,3 +100,4 @@ foreach ($sub in $subscriptions) {
         }
     }
 }
+
