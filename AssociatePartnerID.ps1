@@ -10,72 +10,57 @@
     Requires Az.Accounts, Az.Resources, and Az.Billing.
 #>
 
-# Define parameters
-$PartnerId = "2101226"
+param(
+  [string]$PartnerId = "2101226"
+)
+
+# --- Logging helpers ---
 $LogFile = "PartnerAssociation.log"
-$RequiredModules = @("Az.Accounts", "Az.Resources", "Az.Billing")
-
-# Function to log messages
 function Write-Log {
-    param (
-        [string]$Message,
-        [string]$Level = "INFO"
-    )
-    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-    $logEntry = "$timestamp [$Level] $Message"
-    Write-Output $logEntry
-    Add-Content -Path $LogFile -Value $logEntry
+  param([string]$Message,[ValidateSet("INFO","WARN","ERROR")][string]$Level="INFO")
+  $line = "[{0}] {1}" -f $Level, $Message
+  Write-Host $line -ForegroundColor @{"INFO"="Cyan";"WARN"="Yellow";"ERROR"="Red"}[$Level]
+  Add-Content -Path $LogFile -Value ("{0:yyyy-MM-dd HH:mm:ss} {1}" -f (Get-Date), $line)
 }
 
-# Function to check and install/update required modules
-function Ensure-AzModules {
-    foreach ($module in $RequiredModules) {
-        try {
-            $installed = Get-Module -ListAvailable -Name $module | Sort-Object Version -Descending | Select-Object -First 1
-            if (-not $installed) {
-                Write-Log "Module '$module' not found. Installing..."
-                Install-Module -Name $module -Force -AllowClobber -Scope CurrentUser -ErrorAction Stop
-                Write-Log "Module '$module' installed successfully."
-            } else {
-                Write-Log "Module '$module' version $($installed.Version) found."
-            }
-
-            Import-Module -Name $module -Force -ErrorAction Stop
-            Write-Log "Module '$module' imported successfully."
-        }
-        catch {
-            Write-Log "Error with module '$module': $_" "ERROR"
-            exit 1
-        }
-    }
+# --- Ensure module ---
+$required = @("Az.Accounts","Az.Resources","Az.ManagementPartner")
+foreach ($m in $required) {
+  if (-not (Get-Module -ListAvailable -Name $m)) {
+    Write-Log "Installing module $m..." "INFO"
+    try { Install-Module -Name $m -Scope CurrentUser -Force -AllowClobber -ErrorAction Stop }
+    catch { Write-Log "Failed to install $m. $_" "ERROR"; throw }
+  }
+}
+foreach ($m in $required) {
+  if (-not (Get-Module -Name $m)) {
+    try { Import-Module $m -ErrorAction Stop }
+    catch { Write-Log "Failed to import $m. $_" "ERROR"; throw }
+  }
 }
 
-# Begin script execution
-Write-Log "===== Starting Azure Partner Association Script ====="
-
-# Step 1: Ensure all required modules are installed and imported
-Ensure-AzModules
-
-# Step 2: Get current context
+# --- Context guard ---
 try {
-    $context = Get-AzContext -ErrorAction Stop
-    $subscriptionId = $context.Subscription.Id
-    Write-Log "Current Subscription ID: $subscriptionId"
+  $ctx = Get-AzContext -ErrorAction Stop
+  if (-not $ctx) { throw "No Az context. Please Connect-AzAccount first." }
+} catch {
+  Write-Log "No Azure context. $_" "ERROR"; throw
+}
+
+# --- Associate Partner ID (idempotent) ---
+try {
+  Write-Log "Checking existing partner association..." "INFO"
+  $existing = Get-AzManagementPartner -ErrorAction SilentlyContinue
+  if ($existing -and $existing.PartnerId -eq $PartnerId) {
+    Write-Log "Partner ID $PartnerId already associated. Skipping." "INFO"
+    return
+  }
+
+  Write-Log "Associating Partner ID $PartnerId ..." "INFO"
+  New-AzManagementPartner -PartnerId $PartnerId -ErrorAction Stop
+  Write-Log "Partner ID $PartnerId successfully associated." "INFO"
 }
 catch {
-    Write-Log "Failed to retrieve current Azure context. $_" "ERROR"
-    exit 1
+  Write-Log "Failed to associate Partner ID. $_" "ERROR"
+  throw   # DO NOT use exit; bubble up for the caller to handle
 }
-
-# Step 4: Associate Partner ID
-Write-Log "Attempting to associate Partner ID: $PartnerId..."
-try {
-    New-AzManagementPartner -PartnerId $PartnerId -ErrorAction Stop
-    Write-Log "Partner ID $PartnerId successfully associated with subscription $subscriptionId."
-}
-catch {
-    Write-Log "Failed to associate Partner ID. $_" "ERROR"
-    exit 1
-}
-
-Write-Log "===== Script completed successfully ====="
