@@ -47,7 +47,9 @@ $prodRegion = Get-ValidatedRegion -Prompt "Enter your **PRODUCTION** Azure regio
 $drRegion   = Get-ValidatedRegion -Prompt "Enter your **DISASTER RECOVERY** Azure region (e.g. West Europe, UK West):"
 
 # Set the root management group ID
-$rootId = "/providers/Microsoft.Management/managementGroups/root"
+$tenantId = (Get-AzTenant | Select-Object -ExpandProperty Id)
+$rootId   = "/providers/Microsoft.Management/managementGroups/$tenantId"
+
 
 # Define hierarchy
 $managementGroups = @(
@@ -131,3 +133,4 @@ foreach ($mg in $managementGroups) {
         Write-Warning "Failed to create $($mg.Name) ($($mg.Id)): $_"
     }
 }
+
