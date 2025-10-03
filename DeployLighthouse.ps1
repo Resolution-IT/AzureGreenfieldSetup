@@ -112,7 +112,7 @@ function Invoke-Deployment {
         Write-Host "What-If plan above for $tierName." -ForegroundColor Yellow
       }
     } catch {
-      Write-Host "Unexpected error during deployment of $tierName:" -ForegroundColor Red
+      Write-Host "Unexpected error during deployment of $tierName -" -ForegroundColor Red
       Write-Host $_
     }
   }
