@@ -34,7 +34,7 @@
 # ========== VARIABLES ==========
 $script_PartnerAssociation = "https://raw.githubusercontent.com/ritcs/AzureSetup/refs/heads/main/AssociatePartnerID.ps1"
 $script_CreateManagementGroups = "https://raw.githubusercontent.com/ritcs/AzureSetup/refs/heads/main/BaseManagementGroups.ps1"
-$script_SetupLighthouse = "https://raw.githubusercontent.com/"
+$script_SetupLighthouse = "https://raw.githubusercontent.com/Resolution-IT/AzureGreenfieldSetup/refs/heads/main/DeployLighthouse.ps1"
 $script_ResourceProviderRegistration = "https://raw.githubusercontent.com/ritcs/AzureSetup/refs/heads/main/RegisterResourceProviders.ps1"
 
 # ========== FUNCTIONS ==========
@@ -152,7 +152,8 @@ Connect-AzAccount
 AskToRun -prompt "Do you want to associate the Microsoft Partner ID for RIT?" -scriptPath $script_PartnerAssociation
 AskToRun -prompt "Do you want to create the Management Group hierarchy?" -scriptPath $script_CreateManagementGroups
 AskToRun -prompt "Do you want to configure Resource Providers on the Azure subscriptions?" -scriptPath $script_ResourceProviderRegistration
-#AskToRun -prompt "Do you want to configure Azure Lighthouse delegation?" -scriptPath $script_SetupLighthouse
+AskToRun -prompt "Do you want to configure Azure Lighthouse delegation?" -scriptPath $script_SetupLighthouse
 
 Write-Host "All selected scripts completed." -ForegroundColor Green
+
 Write-Host "You may review Azure Portal or logs for changes." -ForegroundColor Yellow
