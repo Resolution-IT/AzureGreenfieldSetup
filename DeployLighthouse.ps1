@@ -5,7 +5,7 @@ pulling ARM templates from fixed (hard-coded) GitHub Raw URLs.
 
 .REQUIREMENTS
 - Azure CLI (az) installed and logged in
-- PowerShell 7+ recommended
+- PowerShell 5.1+ (7+ recommended)
 
 .EXAMPLES
 .\Deploy-Lighthouse.ps1 -Mode Single -SubscriptionId "00000000-0000-0000-0000-000000000000" -Location "uksouth"
@@ -21,17 +21,15 @@ param(
   [string]$SubscriptionId,
 
   [Parameter(Mandatory = $false)]
-  [string]$Location = "westeurope",
-
-  [switch]$WhatIf
+  [string]$Location = "westeurope"
 )
 
-$GitHubOrg   = "Resolution-IT"
-$GitHubRepo  = "AzureGreenfieldSetup"
+# ======= EDIT THESE CONSTANTS ONCE =======
+$GitHubOrg   = "your-org"
+$GitHubRepo  = "your-repo"
 $GitBranch   = "main"
 $GitHubRawBase = "https://raw.githubusercontent.com/$GitHubOrg/$GitHubRepo/$GitBranch"
 
-# File names in the repo (change if you rename them)
 $TemplateFiles = @(
   "Lighthouse-RIT-Tier1.json",
   "Lighthouse-RIT-Tier2.json",
@@ -39,12 +37,9 @@ $TemplateFiles = @(
 )
 # ========================================
 
-# ---- Helpers ----
 function Ensure-AzLogin {
   Write-Host "Checking Azure login..." -ForegroundColor Cyan
-  try {
-    $null = az account show 2>$null
-  } catch {
+  try { $null = az account show 2>$null } catch {
     Write-Host "Not logged in. Opening browser..." -ForegroundColor Yellow
     az login | Out-Null
   }
@@ -60,12 +55,13 @@ function Invoke-Deployment {
   param(
     [string]$SubscriptionId,
     [string]$Location,
-    [string[]]$TemplateUris,
-    [switch]$WhatIfSwitch
+    [string[]]$TemplateUris
   )
 
   Write-Host "`n==> Switching to subscription $SubscriptionId" -ForegroundColor Cyan
   az account set --subscription $SubscriptionId | Out-Null
+
+  $useWhatIf = $WhatIfPreference -eq $true  # uses built-in -WhatIf
 
   foreach ($tpl in $TemplateUris) {
     $tierName = [System.IO.Path]::GetFileNameWithoutExtension($tpl)
@@ -74,7 +70,7 @@ function Invoke-Deployment {
 
     Write-Host "Deploying template: $tpl" -ForegroundColor Green
 
-    if ($WhatIfSwitch) {
+    if ($useWhatIf) {
       $cmd = @(
         "deployment","sub","what-if",
         "--name",$deployName,
@@ -102,7 +98,7 @@ function Invoke-Deployment {
       }
 
       Write-Host "Success: $tierName => $deployName" -ForegroundColor Green
-      if (-not $WhatIfSwitch) {
+      if (-not $useWhatIf) {
         try {
           $outputs = ($result | ConvertFrom-Json).properties.outputs
           if ($outputs) {
@@ -116,17 +112,16 @@ function Invoke-Deployment {
         Write-Host "What-If plan above for $tierName." -ForegroundColor Yellow
       }
     } catch {
-      Write-Host "Unexpected error during deployment of $tierName -" -ForegroundColor Red
+      Write-Host "Unexpected error during deployment of $tierName:" -ForegroundColor Red
       Write-Host $_
     }
   }
 }
 
-# ---- Main ----
 try {
   Ensure-AzLogin
 
-  # Quick reachability probe so we fail fast if URLs are wrong
+  # Quick reachability probe
   $probeUrl = "$GitHubRawBase/$($TemplateFiles[0])"
   try {
     $probe = Invoke-WebRequest -Uri $probeUrl -Method Head -UseBasicParsing -TimeoutSec 15
@@ -144,14 +139,14 @@ try {
       if ([string]::IsNullOrWhiteSpace($SubscriptionId)) {
         throw "Missing required value: SubscriptionId (in Single mode)."
       }
-      Invoke-Deployment -SubscriptionId $SubscriptionId -Location $Location -TemplateUris $templateUris -WhatIfSwitch:$WhatIf
+      Invoke-Deployment -SubscriptionId $SubscriptionId -Location $Location -TemplateUris $templateUris
     }
     "All" {
       Write-Host "Retrieving all accessible subscriptions..." -ForegroundColor Yellow
       $subs = az account list --query "[].id" -o tsv
       if (-not $subs) { throw "No accessible subscriptions found for current identity." }
       foreach ($sub in $subs) {
-        Invoke-Deployment -SubscriptionId $sub -Location $Location -TemplateUris $templateUris -WhatIfSwitch:$WhatIf
+        Invoke-Deployment -SubscriptionId $sub -Location $Location -TemplateUris $templateUris
       }
     }
   }
