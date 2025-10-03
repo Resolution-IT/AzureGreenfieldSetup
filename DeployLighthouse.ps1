@@ -28,7 +28,7 @@ param(
 $GitHubOrg   = "your-org"
 $GitHubRepo  = "your-repo"
 $GitBranch   = "main"
-$GitHubRawBase = "https://raw.githubusercontent.com/$GitHubOrg/$GitHubRepo/$GitBranch"
+$GitHubRawBase = "https://raw.githubusercontent.com/$GitHubOrg/$GitHubRepo/refs/heads/$GitBranch"
 
 $TemplateFiles = @(
   "Lighthouse-RIT-Tier1.json",
@@ -157,3 +157,4 @@ try {
   Write-Host "Fatal error: $($_.Exception.Message)" -ForegroundColor Red
   exit 1
 }
+
