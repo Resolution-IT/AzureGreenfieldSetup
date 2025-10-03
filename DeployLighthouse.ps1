@@ -25,8 +25,8 @@ param(
 )
 
 # ======= EDIT THESE CONSTANTS ONCE =======
-$GitHubOrg   = "your-org"
-$GitHubRepo  = "your-repo"
+$GitHubOrg   = "Resolution-IT"
+$GitHubRepo  = "AzureGreenfieldSetup"
 $GitBranch   = "main"
 $GitHubRawBase = "https://raw.githubusercontent.com/$GitHubOrg/$GitHubRepo/refs/heads/$GitBranch"
 
@@ -157,4 +157,5 @@ try {
   Write-Host "Fatal error: $($_.Exception.Message)" -ForegroundColor Red
   exit 1
 }
+
 
