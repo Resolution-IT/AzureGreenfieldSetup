@@ -110,14 +110,26 @@ try {
 
 # ========== Import Az Module ==========
 try {
-    Import-Module Az -Force -ErrorAction Stop
-    Write-Info "Az module imported successfully."
-} catch {
+    if (-not (Get-Module -ListAvailable -Name Az)) {
+        Write-WarningMessage "Az module not currently loaded, attempting import..."
+        Import-Module Az -Force -ErrorAction Stop
+        Write-Info "Az module imported successfully."
+    }
+    else {
+        if (-not (Get-Module -Name Az)) {
+            Import-Module Az -Force -ErrorAction Stop
+            Write-Info "Az module imported successfully."
+        } else {
+            Write-Info "Az module already loaded."
+        }
+    }
+}
+catch {
     Write-ErrorMessage "Failed to import Az module: $_"
     exit 1
 }
 
-Write-Host "`Az module setup complete." -ForegroundColor Green
+Write-Host "Az module setup complete." -ForegroundColor Green
 }
 
 function AskToRun {
@@ -129,11 +141,36 @@ function AskToRun {
     $answer = Read-Host "$prompt (Y/N)"
     if ($answer -eq "Y" -or $answer -eq "y") {
         Write-Host "Running: $scriptPath" -ForegroundColor Cyan
-        Run-RemoteScript -scriptUrl "$scriptBaseUrl/$scriptPath"
+        Run-RemoteScript -scriptUrl $scriptPath
     } else {
         Write-Host "Skipping: $scriptPath" -ForegroundColor Gray
     }
 }
+
+function Run-RemoteScript {
+    param(
+        [Parameter(Mandatory)] [string] $scriptUrl,
+        [hashtable] $parameters
+    )
+
+    $tmp = [System.IO.Path]::ChangeExtension((New-TemporaryFile).FullName, ".ps1")
+
+    try {
+        Invoke-WebRequest -Uri $scriptUrl -OutFile $tmp -UseBasicParsing | Out-Null
+        Write-Host "Executing downloaded script: $scriptUrl" -ForegroundColor Cyan
+        
+        if ($parameters) {
+            powershell -NoProfile -ExecutionPolicy Bypass -File $tmp @parameters
+        } else {
+            powershell -NoProfile -ExecutionPolicy Bypass -File $tmp
+        }
+    }
+    finally {
+        Remove-Item $tmp -Force -ErrorAction SilentlyContinue
+    }
+}
+
+
 
 # ========== START ==========
 Write-Host "Verifying prerequisities" -ForegroundColor Green
